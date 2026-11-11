@@ -867,20 +867,6 @@ def reset_form():
     st.session_state.selected_career = None
     st.session_state.selected_category = None
 
-# ----------------------------- Header -----------------------------
-h1, h2 = st.columns([3, 1])
-with h1:
-    st.markdown('<div class="brand">🧠 Jarvis by Anmol</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle">Your Smart Study & Career Companion</div>', unsafe_allow_html=True)
-with h2:
-    chosen_theme = st.selectbox("Appearance", ["Light", "Dark"],
-                                index=0 if st.session_state.theme == "Light" else 1,
-                                key="theme_picker")
-    if chosen_theme != st.session_state.theme:
-        st.session_state.theme = chosen_theme
-        st.rerun()
-st.divider()
-
 # ----------------------------- Student form -----------------------------
 st.markdown("## 👋 Welcome to Your Future")
 st.markdown('<p class="subtitle">Tell us about yourself to explore suitable career paths.</p>', unsafe_allow_html=True)
