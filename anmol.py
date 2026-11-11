@@ -1,5 +1,4 @@
 import streamlit as st
-import re
 
 # ============================================================
 # JARVIS BY ANMOL - CAREER GUIDANCE
@@ -14,6 +13,68 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# Show the welcome screen as a separate first run. The main app is not
+# rendered until the 3-second welcome sequence has finished, preventing
+# the website from flashing underneath or appearing before the welcome.
+import time
+
+if not st.session_state.get("_jarvis_welcome_complete", False):
+    st.markdown(
+        """
+        <div class="jarvis-welcome-screen">
+          <div class="jarvis-welcome-orbit jarvis-orbit-one"></div>
+          <div class="jarvis-welcome-orbit jarvis-orbit-two"></div>
+          <div class="jarvis-welcome-content">
+            <div class="jarvis-welcome-kicker">A PERSONAL SPACE TO LEARN &amp; GROW</div>
+            <div class="jarvis-welcome-title">WELCOME</div>
+            <div class="jarvis-welcome-line"></div>
+            <div class="jarvis-welcome-credit">CREATED BY ANMOL</div>
+          </div>
+        </div>
+        <style>
+          html, body, [data-testid="stAppViewContainer"], .stApp {
+            background: #090e15 !important;
+          }
+          [data-testid="stHeader"], [data-testid="stToolbar"],
+          [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
+            display: none !important;
+          }
+          .jarvis-welcome-screen {
+            position: fixed; inset: 0; z-index: 2147483647;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; background: radial-gradient(ellipse at 50% 45%,
+            #263343 0%, #111923 53%, #090e15 100%);
+            animation: jarvisWelcomeFade 3s ease-in-out forwards;
+          }
+          .jarvis-welcome-content { position: relative; z-index: 2; text-align: center;
+            padding: 24px; animation: jarvisWelcomeRise .9s ease both; }
+          .jarvis-welcome-kicker { color: #c5b18a; font: 10px Arial,sans-serif;
+            letter-spacing: 4px; margin-bottom: 24px; }
+          .jarvis-welcome-title { color: #e4c783; font: 400 clamp(42px,8vw,76px)/1.1 Georgia,serif;
+            letter-spacing: 9px; text-shadow: 0 0 28px rgba(228,199,131,.18); }
+          .jarvis-welcome-line { width: 74px; height: 1px; background: #b99b5d; margin: 20px auto; }
+          .jarvis-welcome-credit { color: #e4e8ed; font: 11px Arial,sans-serif; letter-spacing: 3px; }
+          .jarvis-welcome-orbit { position: absolute; width: min(55vw,560px); aspect-ratio: 1;
+            border: 1px solid rgba(214,179,106,.13); border-radius: 50%;
+            animation: jarvisOrbit 18s linear infinite; }
+          .jarvis-orbit-two { width: min(78vw,790px); opacity: .55; animation-direction: reverse; }
+          @keyframes jarvisOrbit { to { transform: rotate(360deg); } }
+          @keyframes jarvisWelcomeRise { from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); } }
+          @keyframes jarvisWelcomeFade { 0%,82% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+          @media (max-width: 600px) { .jarvis-welcome-title { letter-spacing: 5px; }
+            .jarvis-welcome-kicker { letter-spacing: 2px; } }
+          @media (prefers-reduced-motion: reduce) { .jarvis-welcome-screen,
+            .jarvis-welcome-content, .jarvis-welcome-orbit { animation-duration: 3s; } }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    # Keep the app content out of this run entirely.
+    time.sleep(3)
+    st.session_state["_jarvis_welcome_complete"] = True
+    st.rerun()
 
 CAREERS = {
     "Technology & Coding": [
@@ -741,7 +802,7 @@ GUIDES = {
 }
 }
 
-# ----------------------------- Theme -----------------------------
+# ----------------------------- Theme & premium welcome -----------------------------
 if "theme" not in st.session_state:
     st.session_state.theme = "Light"
 if "show_report" not in st.session_state:
@@ -751,42 +812,59 @@ if "selected_career" not in st.session_state:
 if "selected_category" not in st.session_state:
     st.session_state.selected_category = None
 
+# Welcome cover is created at the very top of the app to prevent first-paint flash.
+
 theme_choice = st.session_state.theme
 if theme_choice == "Dark":
     bg, card, fg, muted, border, input_bg, accent = (
-        "#11121C", "rgba(35,36,53,.92)", "#F5F3FF", "#C0BDD3",
-        "#44435E", "#25263A", "#A88AFF"
+        "#101722", "rgba(25,36,51,.94)", "#F2F5F9", "#AAB7C7",
+        "#2D3C50", "#172334", "#D6B36A"
     )
 else:
     bg, card, fg, muted, border, input_bg, accent = (
-        "#F2F0FA", "rgba(255,255,255,.88)", "#252044", "#625D7B",
-        "#E1DCEF", "#FFFFFF", "#7546D8"
+        "#F5F6F8", "rgba(255,255,255,.96)", "#172333", "#647184",
+        "#E2E7ED", "#FFFFFF", "#A77B32"
     )
 
 st.markdown(f"""
 <style>
-.stApp {{background-color:{bg}; color:{fg};}}
-.block-container {{max-width:1350px;padding-top:1.5rem;padding-bottom:2rem;}}
+:root {{ color-scheme: {'dark' if theme_choice == 'Dark' else 'light'}; }}
+.stApp {{background:{bg}; color:{fg};}}
+[data-testid="stAppViewContainer"] {{background:{bg};}}
+.block-container {{max-width:1240px;padding:2.1rem 2rem 3rem;}}
 h1,h2,h3,h4,p,label,span,li {{color:{fg};}}
 [data-testid="stMarkdownContainer"] p {{color:{fg};}}
-div[data-testid="stVerticalBlockBorderWrapper"] {{
- background:{card};border:1px solid {border};border-radius:20px;
- box-shadow:0 8px 25px rgba(70,50,120,.08);
-}}
-div[data-baseweb="select"] > div {{background:{input_bg};border:1px solid {border};border-radius:12px;}}
+.brand {{font-size:clamp(28px,3vw,39px);font-weight:760;letter-spacing:-1.25px;color:{fg}!important;}}
+.subtitle {{color:{muted}!important;font-size:15px;line-height:1.65;}}
+.dev-notice {{display:inline-flex;align-items:center;gap:8px;margin-top:9px;padding:5px 10px;border:1px solid {border};border-radius:999px;color:{muted}!important;font-size:11px;letter-spacing:.25px;background:{card};}}
+.dev-dot {{width:6px;height:6px;border-radius:50%;background:{accent};display:inline-block;}}
+.small-note,.footer {{color:{muted}!important;}}
+div[data-testid="stVerticalBlockBorderWrapper"] {{background:{card};border:1px solid {border};border-radius:20px;box-shadow:0 7px 24px rgba(18,32,48,.045);transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;}}
+div[data-testid="stVerticalBlockBorderWrapper"]:hover {{border-color:{accent}55;box-shadow:0 13px 34px rgba(18,32,48,.09);}}
+div[data-baseweb="select"] > div {{background:{input_bg};border:1px solid {border};border-radius:11px;}}
 div[data-baseweb="select"] * {{color:{fg}!important;}}
 div[role="listbox"],div[data-baseweb="popover"] {{background:{input_bg};}}
 div[role="option"] {{color:{fg}!important;}}
-.stButton > button {{
- background:{accent};color:white!important;border:0;border-radius:12px;
- min-height:44px;font-weight:650;
-}}
-.stButton > button:hover {{opacity:.86;border:1px solid {accent};}}
-.brand {{font-size:37px;font-weight:850;color:{accent}!important;}}
-.subtitle {{color:{muted}!important;font-size:15px;}}
-.small-note {{color:{muted}!important;font-size:13px;}}
-.footer {{text-align:center;color:{muted}!important;padding:25px;}}
+.stButton > button {{background:{accent};color:#fff!important;border:1px solid {accent};border-radius:12px;min-height:43px;font-weight:650;letter-spacing:.1px;transition:transform .2s ease,filter .2s ease,box-shadow .2s ease;box-shadow:0 3px 10px rgba(20,30,45,.07);}}
+.stButton > button:hover {{filter:brightness(1.06);transform:translateY(-2px);box-shadow:0 8px 18px rgba(20,30,45,.12);}}
+.stButton > button:active {{transform:translateY(0);}}
+input,textarea {{border-radius:10px!important;}}
 a {{color:{accent}!important;}}
+hr {{border-color:{border};}}
+.footer {{text-align:center;padding:30px 10px;line-height:1.8;}}
+.welcome-splash {{position:fixed;inset:0;z-index:999999;background:radial-gradient(ellipse at center,#263343 0%,#111923 52%,#090e15 100%);display:flex;align-items:center;justify-content:center;animation:splash-away 3s ease forwards;pointer-events:none;}}
+.welcome-content {{text-align:center;animation:welcome-rise 1s ease both;position:relative;z-index:1;}}
+.welcome-splash:before,.welcome-splash:after {{content:"";position:absolute;width:38vw;height:38vw;min-width:260px;min-height:260px;border:1px solid rgba(214,179,106,.12);border-radius:50%;animation:orbit 16s linear infinite;}}
+.welcome-splash:after {{width:55vw;height:55vw;animation-direction:reverse;opacity:.55;}}
+@keyframes orbit {{to{{transform:rotate(360deg);}}}}
+.welcome-kicker {{font-size:10px;letter-spacing:4px;color:#c5b18a;margin-bottom:24px;}}
+.welcome-title {{font-family:Georgia,serif;font-size:clamp(42px,8vw,76px);font-weight:400;letter-spacing:9px;color:#e4c783;text-shadow:0 0 28px rgba(228,199,131,.18);}}
+.welcome-rule {{width:74px;height:1px;background:#b99b5d;margin:19px auto;}}
+.welcome-credit {{font-size:11px;letter-spacing:3px;color:#e4e8ed;}}
+@keyframes welcome-rise {{from{{opacity:0;transform:translateY(12px);}}to{{opacity:1;transform:translateY(0);}}}}
+@keyframes splash-away {{0%,78%{{opacity:1;visibility:visible;}}100%{{opacity:0;visibility:hidden;}}}}
+@media(max-width:700px) {{.block-container{{padding:1.2rem .85rem 2rem;}}.welcome-title{{letter-spacing:5px;}}}}
+@media(prefers-reduced-motion:reduce) {{*,*::before,*::after{{animation-duration:.01ms!important;transition-duration:.01ms!important;}}}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -803,17 +881,54 @@ def reset_form():
     st.session_state.selected_category = None
 
 # ----------------------------- Header -----------------------------
-h1, h2 = st.columns([3, 1])
+h1, h2, h3 = st.columns([3.2, 1, 1])
 with h1:
     st.markdown('<div class="brand">🧠 Jarvis by Anmol</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtitle">Your Smart Study & Career Companion</div>', unsafe_allow_html=True)
+    st.markdown('<div class="dev-notice"><span class="dev-dot"></span> This website is still being improved. Thank you for your patience.</div>', unsafe_allow_html=True)
 with h2:
     chosen_theme = st.selectbox("Appearance", ["Light", "Dark"],
                                 index=0 if st.session_state.theme == "Light" else 1,
-                                key="theme_picker")
+                                key="theme_picker", label_visibility="collapsed")
     if chosen_theme != st.session_state.theme:
         st.session_state.theme = chosen_theme
         st.rerun()
+with h3:
+    if "sound_enabled" not in st.session_state:
+        st.session_state.sound_enabled = False
+    st.session_state.sound_enabled = st.toggle("Sound", value=st.session_state.sound_enabled, help="Optional interface sounds")
+
+# Subtle interface sounds. They remain OFF until the visitor enables them.
+if st.session_state.sound_enabled:
+    import streamlit.components.v1 as components
+    components.html("""
+    <script>
+    (() => {
+      try {
+        const doc = window.parent.document;
+        if (doc.__jarvisSoundBound) return;
+        doc.__jarvisSoundBound = true;
+        let audioContext;
+        const playTone = (frequency, duration, volume) => {
+          try {
+            audioContext = audioContext || new (window.parent.AudioContext || window.parent.webkitAudioContext)();
+            if (audioContext.state === 'suspended') audioContext.resume();
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            oscillator.type = 'sine'; oscillator.frequency.value = frequency;
+            gain.gain.setValueAtTime(volume, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + duration);
+            oscillator.connect(gain); gain.connect(audioContext.destination);
+            oscillator.start(); oscillator.stop(audioContext.currentTime + duration);
+          } catch (e) {}
+        };
+        doc.addEventListener('click', e => {
+          if (e.target.closest('button,[role="button"]')) playTone(620, .055, .018);
+        }, true);
+      } catch (e) {}
+    })();
+    </script>
+    """, height=0)
 st.divider()
 
 # ----------------------------- Student form -----------------------------
@@ -944,216 +1059,6 @@ if career:
             "notification. Verify the latest details with the linked authority and "
             "the specific college/employer before applying."
         )
-
-
-
-# ------------------------- Free Career Chat Assistant -------------------------
-st.divider()
-st.header("🤖 Jarvis Career Assistant")
-st.markdown(
-    '<p class="subtitle">Ask about careers already covered on this website. '
-    'Works without an API key or paid subscription.</p>',
-    unsafe_allow_html=True
-)
-
-def _jarvis_guide_text(career_name, guide):
-    parts = [career_name, guide.get("intro", "")]
-    for key, value in guide.items():
-        if isinstance(value, list):
-            parts.extend(str(item) for item in value)
-        else:
-            parts.append(str(value))
-    return " ".join(parts).lower()
-
-def _jarvis_find_careers(question):
-    """Find the most relevant career guides using the website's own data."""
-    query = question.lower()
-    stop_words = {
-        "what", "which", "where", "when", "how", "can", "could", "should",
-        "tell", "about", "explain", "guide", "career", "careers", "job",
-        "jobs", "the", "for", "and", "with", "from", "after", "best",
-        "mujhe", "batao", "btao", "kya", "kaise", "hai", "hain", "ke",
-        "ki", "ka", "me", "mein", "aur", "koi", "options", "guide"
-    }
-        if len(token) > 1 and token not in stop_words
-
-    scores = []
-    for category, careers in CAREERS.items():
-        for career in careers:
-            guide = GUIDES.get(career)
-            if not guide:
-                continue
-            haystack = _jarvis_guide_text(career, guide)
-            score = 0
-            name_tokens = set(re.findall(r"[a-zA-Z0-9+#.]+", career.lower()))
-            score += 5 * len(tokens & name_tokens)
-            score += sum(1 for token in tokens if token in haystack)
-            if career.lower() in query:
-                score += 20
-            if category.lower() in query:
-                score += 4
-            if score:
-                scores.append((score, category, career, guide))
-
-    scores.sort(key=lambda item: item[0], reverse=True)
-    return scores
-
-def _jarvis_answer(question):
-    q = question.lower().strip()
-
-    if any(word in q for word in ["hello", "hi", "hey", "namaste", "नमस्ते"]):
-        return (
-            "Namaste! Main Jarvis Career Assistant hoon. 😊\n\n"
-            "Main is website ke career guides se eligibility, exams, skills, "
-            "preparation aur resources dhoondh sakta hoon. Kisi career ka naam "
-            "likhkar poochho, jaise **BCA**, **UPSC**, **MBBS** ya **Cricketer**."
-        ), []
-
-    if any(word in q for word in ["category", "categories", "career options", "all careers", "sabhi career"]):
-        category_lines = []
-        for category, careers in CAREERS.items():
-            category_lines.append(
-                f"**{category}:** " + ", ".join(careers)
-            )
-        return "Website par ye career categories available hain:\n\n" + "\n\n".join(category_lines), []
-
-    results = _jarvis_find_careers(q)
-    if not results:
-        return (
-            "Is sawaal ka jawab abhi meri built-in career library mein nahi mila. "
-            "Kisi listed career ka naam likho, jaise **B.Tech Computer Science**, "
-            "**NDA**, **CA**, **Graphic Designing** ya **YouTuber**.\n\n"
-            "Note: Main abhi live internet search ya general-purpose AI model use nahi karta."
-        ), []
-
-    top_results = results[:2]
-    answer_parts = []
-    sources = []
-    for score, category, career, guide in top_results:
-        answer_parts.append(f"## {career}\n*Category: {category}*")
-        answer_parts.append(guide.get("intro", ""))
-
-        # Return the most useful sections based on what the user asked.
-        requested_sections = []
-        if any(word in q for word in ["eligib", "qualification", "12th", "12th ke baad", "subject", "marks"]):
-            requested_sections += ["qualification", "age", "admission"]
-        if any(word in q for word in ["exam", "entrance", "test", "syllabus", "paper"]):
-            requested_sections += ["exam", "syllabus"]
-        if any(word in q for word in ["resource", "website", "link", "study", "prepare", "preparation"]):
-            requested_sections += ["resources", "strategy"]
-        if any(word in q for word in ["salary", "income", "earning", "package", "paisa"]):
-            requested_sections += ["salary", "opportunities"]
-        if any(word in q for word in ["skill", "skills", "ability"]):
-            requested_sections += ["skills"]
-        if not requested_sections:
-            requested_sections = [
-                "qualification", "admission", "exam", "skills",
-                "opportunities", "resources"
-            ]
-
-        labels = {
-            "qualification": "Eligibility",
-            "age": "Age criteria",
-            "admission": "Admission process",
-            "exam": "Entrance / selection",
-            "syllabus": "Syllabus",
-            "resources": "Learning resources",
-            "strategy": "Preparation strategy",
-            "salary": "Salary",
-            "opportunities": "Career opportunities",
-            "skills": "Important skills",
-        }
-
-        seen = set()
-        for key in requested_sections:
-            if key in seen or key not in guide:
-                continue
-            seen.add(key)
-            value = guide[key]
-            if isinstance(value, list):
-                formatted = "\n".join(f"- {item}" for item in value)
-                answer_parts.append(f"**{labels[key]}**\n{formatted}")
-                if key == "resources":
-                    for item in value:
-                        match = re.search(r"https?://\S+", str(item))
-                        if match:
-                            url = match.group(0).rstrip(".,)")
-                            sources.append((career + " resource", url))
-            else:
-                answer_parts.append(f"**{labels[key]}:** {value}")
-
-        for item in guide.get("official", []):
-            if isinstance(item, str) and item.startswith("http"):
-                sources.append((career + " official source", item))
-
-    unique_sources = []
-    seen_urls = set()
-    for title, url in sources:
-        if url not in seen_urls:
-            seen_urls.add(url)
-            unique_sources.append((title, url))
-
-    answer_parts.append(
-        "\n**Important:** Eligibility, age limits, exam dates, fees and salaries "
-        "can change. Latest details ke liye official authority ki notification check karein."
-    )
-    return "\n\n".join(answer_parts), unique_sources
-
-if "chat_messages" not in st.session_state:
-    st.session_state.chat_messages = []
-
-with st.container(border=True):
-    left_col, right_col = st.columns([3, 1])
-    with left_col:
-        st.caption("🟢 Free mode • No API key • No usage charges")
-    with right_col:
-        if st.button("🗑️ Clear chat", use_container_width=True, key="clear_jarvis_chat"):
-            st.session_state.chat_messages = []
-            st.rerun()
-
-    st.info(
-        "Main tumhari website ke 49 career guides mein se information nikaal sakta hoon. "
-        "Yeh built-in assistant hai—live web search aur open-ended AI chat abhi available nahi hain."
-    )
-
-    for message in st.session_state.chat_messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-            if message.get("sources"):
-                with st.expander("🔗 Official links and resources"):
-                    for title, url in message["sources"]:
-                        st.markdown(f"- [{title}]({url})")
-
-    user_prompt = st.chat_input(
-        "Career, eligibility, exam ya skills ke baare mein poochho...",
-        key="jarvis_chat_input"
-    )
-
-    if user_prompt:
-        st.session_state.chat_messages.append({
-            "role": "user",
-            "content": user_prompt
-        })
-        with st.chat_message("user"):
-            st.markdown(user_prompt)
-
-        with st.chat_message("assistant"):
-            with st.spinner("Jarvis tumhari career library check kar raha hai..."):
-                answer, sources = _jarvis_answer(user_prompt)
-                st.markdown(answer)
-                if sources:
-                    with st.expander("🔗 Official links and resources"):
-                        for title, url in sources:
-                            st.markdown(f"- [{title}]({url})")
-
-        st.session_state.chat_messages.append({
-            "role": "assistant",
-            "content": answer,
-            "sources": sources
-        })
-        # Keep the session history compact.
-        st.session_state.chat_messages = st.session_state.chat_messages[-20:]
-
 
 # ----------------------------- Footer -----------------------------
 st.divider()
