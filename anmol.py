@@ -863,7 +863,7 @@ hr {{border-color:{border};}}
 .welcome-credit {{font-size:11px;letter-spacing:3px;color:#e4e8ed;}}
 @keyframes welcome-rise {{from{{opacity:0;transform:translateY(12px);}}to{{opacity:1;transform:translateY(0);}}}}
 @keyframes splash-away {{0%,78%{{opacity:1;visibility:visible;}}100%{{opacity:0;visibility:hidden;}}}}
-@media(max-width:700px) {.block-container{padding:3.5rem .85rem 2rem;}.brand{line-height:1.35;padding-top:8px;overflow:visible;}.welcome-title{letter-spacing:5px;}}
+@media(max-width:700px) {{.block-container{{padding:1.2rem .85rem 2rem;}}.welcome-title{{letter-spacing:5px;}}}}
 @media(prefers-reduced-motion:reduce) {{*,*::before,*::after{{animation-duration:.01ms!important;transition-duration:.01ms!important;}}}}
 </style>
 """, unsafe_allow_html=True)
