@@ -744,7 +744,6 @@ GUIDES = {
 }
 }
 
-```python
 # ----------------------------- Theme -----------------------------
 if "theme" not in st.session_state:
     st.session_state.theme = "Light"
