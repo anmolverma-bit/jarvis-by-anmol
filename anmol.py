@@ -856,7 +856,6 @@ with h2:
         st.rerun()
 
 st.divider()
-```e)
 def reset_form():
     for key, value in {
         "student_class": "Select Class",
