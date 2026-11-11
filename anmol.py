@@ -8,7 +8,6 @@ import streamlit as st
 # ============================================================
 
 st.set_page_config(
-    st.info("🚧 This website is currently under development. I'm continuously working to improve your experience. Stay tuned!")
     page_title="Jarvis by Anmol",
     page_icon="🎓",
     layout="wide",
