@@ -744,6 +744,7 @@ GUIDES = {
 }
 }
 
+```python
 # ----------------------------- Theme -----------------------------
 if "theme" not in st.session_state:
     st.session_state.theme = "Light"
@@ -755,6 +756,7 @@ if "selected_category" not in st.session_state:
     st.session_state.selected_category = None
 
 theme_choice = st.session_state.theme
+
 if theme_choice == "Dark":
     bg, card, fg, muted, border, input_bg, accent = (
         "#11121C", "rgba(35,36,53,.92)", "#F5F3FF", "#C0BDD3",
@@ -772,26 +774,89 @@ st.markdown(f"""
 .block-container {{max-width:1350px;padding-top:1.5rem;padding-bottom:2rem;}}
 h1,h2,h3,h4,p,label,span,li {{color:{fg};}}
 [data-testid="stMarkdownContainer"] p {{color:{fg};}}
+
 div[data-testid="stVerticalBlockBorderWrapper"] {{
  background:{card};border:1px solid {border};border-radius:20px;
  box-shadow:0 8px 25px rgba(70,50,120,.08);
 }}
-div[data-baseweb="select"] > div {{background:{input_bg};border:1px solid {border};border-radius:12px;}}
+
+div[data-baseweb="select"] > div {{
+ background:{input_bg};border:1px solid {border};border-radius:12px;
+}}
 div[data-baseweb="select"] * {{color:{fg}!important;}}
 div[role="listbox"],div[data-baseweb="popover"] {{background:{input_bg};}}
 div[role="option"] {{color:{fg}!important;}}
+
 .stButton > button {{
  background:{accent};color:white!important;border:0;border-radius:12px;
  min-height:44px;font-weight:650;
 }}
 .stButton > button:hover {{opacity:.86;border:1px solid {accent};}}
+
 .brand {{font-size:37px;font-weight:850;color:{accent}!important;}}
 .subtitle {{color:{muted}!important;font-size:15px;}}
 .small-note {{color:{muted}!important;font-size:13px;}}
 .footer {{text-align:center;color:{muted}!important;padding:25px;}}
 a {{color:{accent}!important;}}
+
+/* Compact Theme Selector on Right Side */
+.st-key-theme_picker {{
+    width:120px;
+    margin-left:auto;
+}}
+
+.st-key-theme_picker [data-testid="stSelectbox"] {{
+    width:100%;
+}}
+
+.st-key-theme_picker label {{
+    display:none;
+}}
+
+.st-key-theme_picker div[data-baseweb="select"] > div {{
+    min-height:34px;
+    border-radius:10px;
+}}
+
 </style>
 """, unsafe_allow_html=True)
+
+
+def reset_form():
+    for key, value in {
+        "student_class": "Select Class",
+        "subject": "Select Subject",
+        "interest": "Select Interest",
+        "goal": "Select Goal",
+    }.items():
+        st.session_state[key] = value
+    st.session_state.show_report = False
+    st.session_state.selected_career = None
+    st.session_state.selected_category = None
+
+
+# ----------------------------- Header -----------------------------
+h1, h2 = st.columns([3, 1])
+
+with h1:
+    st.markdown('<div class="brand">🧠 Jarvis by Anmol</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subtitle">Your Smart Study & Career Companion</div>', unsafe_allow_html=True)
+
+with h2:
+    chosen_theme = st.selectbox(
+        "Appearance",
+        ["Light", "Dark"],
+        index=0 if st.session_state.theme == "Light" else 1,
+        key="theme_picker",
+        label_visibility="collapsed"
+    )
+
+    if chosen_theme != st.session_state.theme:
+        st.session_state.theme = chosen_theme
+        st.rerun()
+
+st.divider()
+```e)
 def reset_form():
     for key, value in {
         "student_class": "Select Class",
