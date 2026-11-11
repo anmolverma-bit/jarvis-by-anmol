@@ -975,7 +975,6 @@ def _jarvis_find_careers(question):
         "mujhe", "batao", "btao", "kya", "kaise", "hai", "hain", "ke",
         "ki", "ka", "me", "mein", "aur", "koi", "options", "guide"
     }
-    tokens = token for token in re.findall(r"[a-zA-Z0-9+#.]+", query)
         if len(token) > 1 and token not in stop_words
 
     scores = []
