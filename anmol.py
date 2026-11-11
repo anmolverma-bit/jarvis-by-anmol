@@ -895,7 +895,6 @@ with h2:
         st.rerun()
 
 # Subtle interface sounds. They remain OFF until the visitor enables them.
-if st.session_state.sound_enabled:
     import streamlit.components.v1 as components
     components.html("""
     <script>
