@@ -8,7 +8,7 @@ import streamlit as st
 # ============================================================
 
 st.set_page_config(
-    page_title="Jarvis",
+    page_title="Jarvis by Anmol",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -881,7 +881,7 @@ def reset_form():
     st.session_state.selected_category = None
 
 # ----------------------------- Header -----------------------------
-h1, h2 = st.columns([3.2, 1])
+h1, h2, h3 = st.columns([3.2, 1, 1])
 with h1:
     st.markdown('<div class="brand">🧠 Jarvis by Anmol</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtitle">Your Smart Study & Career Companion</div>', unsafe_allow_html=True)
@@ -893,8 +893,13 @@ with h2:
     if chosen_theme != st.session_state.theme:
         st.session_state.theme = chosen_theme
         st.rerun()
+with h3:
+    if "sound_enabled" not in st.session_state:
+        st.session_state.sound_enabled = False
+    st.session_state.sound_enabled = st.toggle("Sound", value=st.session_state.sound_enabled, help="Optional interface sounds")
 
 # Subtle interface sounds. They remain OFF until the visitor enables them.
+if st.session_state.sound_enabled:
     import streamlit.components.v1 as components
     components.html("""
     <script>
@@ -926,134 +931,374 @@ with h2:
     """, height=0)
 st.divider()
 
-# ----------------------------- Student form -----------------------------
-st.markdown("## 🎓FOR YOUR BETTER GUIDENCE")
-st.markdown('<p class="subtitle">Tell us about yourself to explore suitable career paths.</p>', unsafe_allow_html=True)
 
-with st.container(border=True):
-    st.subheader("📚 Student Information")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.selectbox("Select Your Class",
-            ["Select Class", "Class 8", "Class 9", "Class 10", "Class 11",
-             "Class 12", "After 12th", "College Student"], key="student_class")
-        st.selectbox("Favourite Subject",
-            ["Select Subject", "Mathematics", "Science", "Biology", "Commerce",
-             "English", "Computer Science", "Arts"], key="subject")
-    with c2:
-        st.selectbox("Your Interest", ["Select Interest"] + list(CAREERS.keys()), key="interest")
-        st.selectbox("Your Goal",
-            ["Select Goal", "Government Job", "Private Job", "Business",
-             "Higher Studies", "Not Decided"], key="goal")
-    b1, b2 = st.columns([3, 1])
-    with b1:
-        get_future = st.button("🚀 GET MY FUTURE", use_container_width=True)
-    with b2:
-        st.button("↻ RESET", use_container_width=True, on_click=reset_form)
+# ----------------------------- Main navigation -----------------------------
+if "jarvis_active_page" not in st.session_state:
+    st.session_state.jarvis_active_page = "Guidance for Studies"
 
-if get_future:
-    st.session_state.show_report = True
-    st.session_state.selected_career = None
-    st.session_state.selected_category = None
-
-if st.session_state.show_report:
-    vals = [st.session_state.student_class, st.session_state.subject,
-            st.session_state.interest, st.session_state.goal]
-    if any(v.startswith("Select ") for v in vals):
-        st.warning("Please fill in all four options.")
-    else:
-        category = st.session_state.interest
-        st.success("Your Future Study Report is Ready!")
-        with st.container(border=True):
-            st.header("📋 Your Future Study Report")
-            r1, r2 = st.columns(2)
-            with r1:
-                st.write("**Your Class:**", st.session_state.student_class)
-                st.write("**Favourite Subject:**", st.session_state.subject)
-            with r2:
-                st.write("**Your Interest:**", category)
-                st.write("**Your Goal:**", st.session_state.goal)
-            st.divider()
-            st.subheader("🎯 Recommended Careers")
-            st.caption("Select a career to open its own detailed guide.")
-            cols = st.columns(2)
-            for i, career in enumerate(CAREERS[category]):
-                with cols[i % 2]:
-                    if st.button(f"📖 Explore {career} →", key=f"recommend_{career}",
-                                 use_container_width=True):
-                        st.session_state.selected_career = career
-                        st.session_state.selected_category = category
-                        st.rerun()
-            st.divider()
-            st.subheader("📖 Suggested next steps")
-            for i, step in enumerate([
-                "Read the individual guide and note its eligibility requirements.",
-                "Check the current official admission or recruitment notification.",
-                "Compare course duration, fees, location and recognition.",
-                "Discuss important decisions with a teacher, parent or qualified counsellor."
-            ], 1):
-                st.write(f"{i}. {step}")
-
-# ----------------------------- Explore careers -----------------------------
+nav_left, nav_right = st.columns(2)
+with nav_left:
+    if st.button(
+        "📚 Guidance for Studies",
+        key="nav_guidance",
+        use_container_width=True,
+        type="primary" if st.session_state.jarvis_active_page == "Guidance for Studies" else "secondary",
+    ):
+        st.session_state.jarvis_active_page = "Guidance for Studies"
+        st.rerun()
+with nav_right:
+    if st.button(
+        "🏛️ College Finder",
+        key="nav_college_finder",
+        use_container_width=True,
+        type="primary" if st.session_state.jarvis_active_page == "College Finder" else "secondary",
+    ):
+        st.session_state.jarvis_active_page = "College Finder"
+        st.rerun()
 st.divider()
-st.header("🌍 Explore All Career Options")
-st.markdown('<p class="subtitle">Every career below opens a separate profession-specific guide.</p>', unsafe_allow_html=True)
-selected_category = st.selectbox("Choose a Career Category", list(CAREERS.keys()), key="explore_category")
-career_cols = st.columns(3)
-for i, career in enumerate(CAREERS[selected_category]):
-    with career_cols[i % 3]:
-        if st.button(f"📘 {career}", key=f"explore_{career}", use_container_width=True):
-            st.session_state.selected_career = career
-            st.session_state.selected_category = selected_category
-            st.rerun()
 
-# ----------------------------- Individual career guide -----------------------------
-career = st.session_state.selected_career
-if career:
-    st.divider()
-    st.header(f"🎓 {career} — Complete Career Guide")
-    if st.button("← Back to Career Exploration", key="back_to_explore"):
+
+# ----------------------------- College Finder -----------------------------
+import re
+from datetime import datetime
+from urllib.parse import urlparse
+
+OFFICIAL_DOMAINS = (
+    "ugc.gov.in", "aicte-india.org", "aishe.gov.in", "nirfindia.org",
+    "nta.ac.in", "cuet.nta.nic.in", "josaa.nic.in", "mcc.nic.in",
+    "education.gov.in", "ac.in", "edu.in", "gov.in"
+)
+
+def _college_domain(url):
+    try:
+        return urlparse(url).netloc.lower().removeprefix("www.")
+    except Exception:
+        return ""
+
+def _is_official_result(url):
+    domain = _college_domain(url)
+    return any(domain == item or domain.endswith("." + item) for item in OFFICIAL_DOMAINS)
+
+@st.cache_data(ttl=600, show_spinner=False)
+def search_college_web(query, official_query):
+    """Fetch fresh web search results; cache briefly to reduce repeated requests."""
+    from ddgs import DDGS
+
+    searcher = DDGS(timeout=15)
+    collected = []
+    seen = set()
+
+    for search_query in (official_query, query):
+        if not search_query:
+            continue
+        try:
+            results = searcher.text(
+                search_query,
+                region="in-en",
+                safesearch="moderate",
+                max_results=8,
+                backend="auto",
+            )
+            for item in results or []:
+                url = (item.get("href") or item.get("url") or "").strip()
+                title = (item.get("title") or "").strip()
+                body = (item.get("body") or item.get("description") or "").strip()
+                if not url or not title or url in seen:
+                    continue
+                seen.add(url)
+                collected.append({
+                    "title": title,
+                    "url": url,
+                    "body": body,
+                    "official": _is_official_result(url),
+                })
+        except Exception:
+            # One search backend can fail while the other still returns results.
+            continue
+
+    collected.sort(key=lambda result: (not result["official"],))
+    return collected
+
+def render_college_finder():
+    st.markdown("## 🏛️ College Finder")
+    st.markdown(
+        '<p class="subtitle">Search colleges and current admission information from the web. '
+        'Results are live web-search references, not a pre-verified college database.</p>',
+        unsafe_allow_html=True,
+    )
+
+    with st.container(border=True):
+        st.subheader("🔎 Find colleges & information")
+        with st.form("college_finder_search_form"):
+            c1, c2 = st.columns(2)
+            with c1:
+                college_name = st.text_input(
+                    "College name (optional)", placeholder="e.g. BHU, Delhi University"
+                )
+                course_name = st.text_input(
+                    "Course / programme", placeholder="e.g. BCA, B.Tech, MBBS"
+                )
+                state_name = st.text_input(
+                    "State", placeholder="e.g. Uttar Pradesh"
+                )
+            with c2:
+                city_name = st.text_input(
+                    "City (optional)", placeholder="e.g. Varanasi"
+                )
+                college_type = st.selectbox(
+                    "College type",
+                    ["Any type", "Government", "Private", "Central University",
+                     "State University", "Deemed University", "Engineering",
+                     "Medical", "Management", "Arts & Science"],
+                )
+                info_topic = st.selectbox(
+                    "What do you want to know?",
+                    ["College search / overview", "Admissions 2026-27",
+                     "Eligibility & required subjects", "Fees & scholarships",
+                     "Entrance exams & counselling", "Placements & courses",
+                     "Hostel & campus facilities", "Recognition / approval",
+                     "Ranking (NIRF)", "Contact & official website"],
+                )
+            submitted = st.form_submit_button(
+                "🌐 Search latest web information", use_container_width=True
+            )
+
+    if submitted:
+        parts = [p.strip() for p in (
+            college_name, course_name, city_name, state_name
+        ) if p and p.strip()]
+        if college_type != "Any type":
+            parts.append(college_type + " college")
+        topic_map = {
+            "College search / overview": "colleges official website courses",
+            "Admissions 2026-27": "2026-27 admission notification application dates",
+            "Eligibility & required subjects": "eligibility criteria required subjects",
+            "Fees & scholarships": "official fee structure scholarships",
+            "Entrance exams & counselling": "entrance examination counselling 2026",
+            "Placements & courses": "courses placement report",
+            "Hostel & campus facilities": "hostel campus facilities",
+            "Recognition / approval": "UGC AICTE recognition approval status",
+            "Ranking (NIRF)": "NIRF 2025 ranking",
+            "Contact & official website": "official website contact",
+        }
+        parts.append(topic_map[info_topic])
+        query = " ".join(parts) + " India"
+
+        official_parts = [p.strip() for p in (
+            college_name, course_name, city_name, state_name
+        ) if p and p.strip()]
+        official_query = (
+            " ".join(official_parts + [topic_map[info_topic]]) +
+            " India (site:ugc.gov.in OR site:aicte-india.org OR "
+            "site:aishe.gov.in OR site:nirfindia.org OR site:ac.in OR site:edu.in)"
+        )
+
+        st.session_state["college_finder_last_query"] = query
+        st.session_state["college_finder_last_official_query"] = official_query
+        st.session_state["college_finder_results"] = None
+
+    if st.session_state.get("college_finder_last_query"):
+        query = st.session_state["college_finder_last_query"]
+        official_query = st.session_state.get("college_finder_last_official_query", "")
+        st.caption("Search query: " + query)
+
+        with st.spinner("Searching the web for current college information..."):
+            try:
+                results = search_college_web(query, official_query)
+                st.session_state["college_finder_results"] = results
+            except Exception as exc:
+                st.session_state["college_finder_results"] = []
+                st.error(
+                    "Web search could not be completed right now. "
+                    "Please try again in a little while."
+                )
+
+        results = st.session_state.get("college_finder_results") or []
+        st.caption(
+            "Search performed: " +
+            datetime.now().astimezone().strftime("%d %b %Y, %I:%M %p %Z")
+        )
+
+        if results:
+            official_count = sum(1 for item in results if item["official"])
+            st.success(
+                f"{len(results)} web results found • "
+                f"{official_count} results appear to be from official/education domains"
+            )
+            st.info(
+                "Official-domain label sirf website domain par based hai. "
+                "Har page ki information, date, recognition ya admission status "
+                "independently verify karna zaroori hai."
+            )
+            for index, item in enumerate(results, 1):
+                with st.container(border=True):
+                    label = "Official / education domain" if item["official"] else "Web result — verify source"
+                    st.markdown(f"**{index}. {item['title']}**")
+                    st.caption(label + " • " + _college_domain(item["url"]))
+                    if item["body"]:
+                        st.write(item["body"])
+                    st.markdown(f"[Open source page ↗]({item['url']})")
+        else:
+            st.warning(
+                "Is query ke liye abhi koi result nahi mila. Search terms ko "
+                "short karke ya college/course ka naam badal kar try karein."
+            )
+
+    with st.container(border=True):
+        st.subheader("🛡️ Important information")
+        st.markdown(
+            "- Search results internet se request ke waqt laaye jaate hain; "
+            "results search provider ki availability par depend karte hain.\n"
+            "- Search result ka snippet poori official notification ka substitute nahi hai.\n"
+            "- Fees, admission dates, eligibility, seat matrix, placements aur hostel "
+            "details ko college ke latest prospectus/official notice se confirm karein.\n"
+            "- Recognition ke liye relevant regulator ki official listing check karein "
+            "(UGC / AICTE / NMC / NIRF, as applicable).\n"
+            "- NIRF ranking, approval, accreditation aur university recognition "
+            "alag-alag cheezein hain."
+        )
+        st.markdown(
+            "**Useful official portals:** "
+            "[UGC](https://www.ugc.gov.in/) · "
+            "[AICTE](https://www.aicte-india.org/) · "
+            "[AISHE](https://aishe.gov.in/) · "
+            "[NIRF](https://www.nirfindia.org/) · "
+            "[National Career Service](https://www.ncs.gov.in/)"
+        )
+
+if st.session_state.jarvis_active_page == "Guidance for Studies":
+    # ----------------------------- Student form -----------------------------
+    st.markdown("## 👋 Welcome to Your Future")
+    st.markdown('<p class="subtitle">Tell us about yourself to explore suitable career paths.</p>', unsafe_allow_html=True)
+
+    with st.container(border=True):
+        st.subheader("📚 Student Information")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.selectbox("Select Your Class",
+                ["Select Class", "Class 8", "Class 9", "Class 10", "Class 11",
+                 "Class 12", "After 12th", "College Student"], key="student_class")
+            st.selectbox("Favourite Subject",
+                ["Select Subject", "Mathematics", "Science", "Biology", "Commerce",
+                 "English", "Computer Science", "Arts"], key="subject")
+        with c2:
+            st.selectbox("Your Interest", ["Select Interest"] + list(CAREERS.keys()), key="interest")
+            st.selectbox("Your Goal",
+                ["Select Goal", "Government Job", "Private Job", "Business",
+                 "Higher Studies", "Not Decided"], key="goal")
+        b1, b2 = st.columns([3, 1])
+        with b1:
+            get_future = st.button("🚀 GET MY FUTURE", use_container_width=True)
+        with b2:
+            st.button("↻ RESET", use_container_width=True, on_click=reset_form)
+
+    if get_future:
+        st.session_state.show_report = True
         st.session_state.selected_career = None
         st.session_state.selected_category = None
-        st.rerun()
 
-    guide = GUIDES.get(career)
-    if guide is None:
-        st.error("This career guide is not available yet. Please report this issue.")
-    else:
-        st.info(guide["intro"])
-        sections = [
-            ("1. Educational Qualification", "qualification"),
-            ("2. Age Criteria", "age"),
-            ("3. Admission / Entry Process", "admission"),
-            ("4. Entrance Examination / Selection", "exam"),
-            ("5. Syllabus / Important Topics", "syllabus"),
-            ("6. Free Learning Resources & Official Links", "resources"),
-            ("7. Preparation / Career-Building Strategy", "strategy"),
-            ("8. Important Skills", "skills"),
-            ("9. Career Opportunities & Growth", "opportunities"),
-            ("10. Salary & Earnings", "salary"),
-            ("11. Official Authorities / Websites", "official"),
-        ]
-        for title, key in sections:
+    if st.session_state.show_report:
+        vals = [st.session_state.student_class, st.session_state.subject,
+                st.session_state.interest, st.session_state.goal]
+        if any(v.startswith("Select ") for v in vals):
+            st.warning("Please fill in all four options.")
+        else:
+            category = st.session_state.interest
+            st.success("Your Future Study Report is Ready!")
             with st.container(border=True):
-                st.subheader(title)
-                value = guide[key]
-                if isinstance(value, list):
-                    for item in value:
-                        if key in ("resources", "official") and item.startswith("http"):
-                            st.markdown(f"- [{item}]({item})")
-                        else:
-                            st.markdown(f"- {item}")
-                else:
-                    st.write(value)
+                st.header("📋 Your Future Study Report")
+                r1, r2 = st.columns(2)
+                with r1:
+                    st.write("**Your Class:**", st.session_state.student_class)
+                    st.write("**Favourite Subject:**", st.session_state.subject)
+                with r2:
+                    st.write("**Your Interest:**", category)
+                    st.write("**Your Goal:**", st.session_state.goal)
+                st.divider()
+                st.subheader("🎯 Recommended Careers")
+                st.caption("Select a career to open its own detailed guide.")
+                cols = st.columns(2)
+                for i, career in enumerate(CAREERS[category]):
+                    with cols[i % 2]:
+                        if st.button(f"📖 Explore {career} →", key=f"recommend_{career}",
+                                     use_container_width=True):
+                            st.session_state.selected_career = career
+                            st.session_state.selected_category = category
+                            st.rerun()
+                st.divider()
+                st.subheader("📖 Suggested next steps")
+                for i, step in enumerate([
+                    "Read the individual guide and note its eligibility requirements.",
+                    "Check the current official admission or recruitment notification.",
+                    "Compare course duration, fees, location and recognition.",
+                    "Discuss important decisions with a teacher, parent or qualified counsellor."
+                ], 1):
+                    st.write(f"{i}. {step}")
 
-        st.warning(
-            "Important: Admission rules, age limits, exam patterns, fees, recognition "
-            "and salaries can change. This guide is an orientation, not an official "
-            "notification. Verify the latest details with the linked authority and "
-            "the specific college/employer before applying."
-        )
+    # ----------------------------- Explore careers -----------------------------
+    st.divider()
+    st.header("🌍 Explore All Career Options")
+    st.markdown('<p class="subtitle">Every career below opens a separate profession-specific guide.</p>', unsafe_allow_html=True)
+    selected_category = st.selectbox("Choose a Career Category", list(CAREERS.keys()), key="explore_category")
+    career_cols = st.columns(3)
+    for i, career in enumerate(CAREERS[selected_category]):
+        with career_cols[i % 3]:
+            if st.button(f"📘 {career}", key=f"explore_{career}", use_container_width=True):
+                st.session_state.selected_career = career
+                st.session_state.selected_category = selected_category
+                st.rerun()
+
+    # ----------------------------- Individual career guide -----------------------------
+    career = st.session_state.selected_career
+    if career:
+        st.divider()
+        st.header(f"🎓 {career} — Complete Career Guide")
+        if st.button("← Back to Career Exploration", key="back_to_explore"):
+            st.session_state.selected_career = None
+            st.session_state.selected_category = None
+            st.rerun()
+
+        guide = GUIDES.get(career)
+        if guide is None:
+            st.error("This career guide is not available yet. Please report this issue.")
+        else:
+            st.info(guide["intro"])
+            sections = [
+                ("1. Educational Qualification", "qualification"),
+                ("2. Age Criteria", "age"),
+                ("3. Admission / Entry Process", "admission"),
+                ("4. Entrance Examination / Selection", "exam"),
+                ("5. Syllabus / Important Topics", "syllabus"),
+                ("6. Free Learning Resources & Official Links", "resources"),
+                ("7. Preparation / Career-Building Strategy", "strategy"),
+                ("8. Important Skills", "skills"),
+                ("9. Career Opportunities & Growth", "opportunities"),
+                ("10. Salary & Earnings", "salary"),
+                ("11. Official Authorities / Websites", "official"),
+            ]
+            for title, key in sections:
+                with st.container(border=True):
+                    st.subheader(title)
+                    value = guide[key]
+                    if isinstance(value, list):
+                        for item in value:
+                            if key in ("resources", "official") and item.startswith("http"):
+                                st.markdown(f"- [{item}]({item})")
+                            else:
+                                st.markdown(f"- {item}")
+                    else:
+                        st.write(value)
+
+            st.warning(
+                "Important: Admission rules, age limits, exam patterns, fees, recognition "
+                "and salaries can change. This guide is an orientation, not an official "
+                "notification. Verify the latest details with the linked authority and "
+                "the specific college/employer before applying."
+            )
+
+
+elif st.session_state.jarvis_active_page == "College Finder":
+    render_college_finder()
 
 # ----------------------------- Footer -----------------------------
 st.divider()
