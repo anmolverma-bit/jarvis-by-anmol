@@ -881,7 +881,7 @@ def reset_form():
     st.session_state.selected_category = None
 
 # ----------------------------- Header -----------------------------
-h1, h2, h3 = st.columns([3.2, 1, 1])
+h1, h2 = st.columns([3.2, 1])
 with h1:
     st.markdown('<div class="brand">🧠 Jarvis by Anmol</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtitle">Your Smart Study & Career Companion</div>', unsafe_allow_html=True)
@@ -893,15 +893,9 @@ with h2:
     if chosen_theme != st.session_state.theme:
         st.session_state.theme = chosen_theme
         st.rerun()
-with h3:
-    if "sound_enabled" not in st.session_state:
-        st.session_state.sound_enabled = False
-    st.session_state.sound_enabled = st.toggle("Sound", value=st.session_state.sound_enabled, help="Optional interface sounds")
-
-# Subtle interface sounds. They remain OFF until the visitor enables them.
-if st.session_state.sound_enabled:
-    import streamlit.components.v1 as components
-    components.html("""
+# Interface sounds are permanently enabled; there is no on/off control.
+import streamlit.components.v1 as components
+components.html("""
     <script>
     (() => {
       try {
@@ -927,8 +921,8 @@ if st.session_state.sound_enabled:
         }, true);
       } catch (e) {}
     })();
-    </script>
-    """, height=0)
+</script>
+""", height=0)
 st.divider()
 
 
@@ -979,45 +973,167 @@ def _is_official_result(url):
     domain = _college_domain(url)
     return any(domain == item or domain.endswith("." + item) for item in OFFICIAL_DOMAINS)
 
+def _college_relevance(item, college_name="", course_name="", city_name="", state_name=""):
+    """Strictly match the requested institution; do not show keyword-only matches."""
+    title = (item.get("title") or "").lower()
+    body = (item.get("body") or "").lower()
+    url = (item.get("url") or "").lower()
+    text = " ".join((title, body, url))
+    score = 0
+
+    if college_name.strip():
+        name = " ".join(re.sub(r"[^a-z0-9 ]", " ", college_name.lower()).split())
+        title_clean = " ".join(re.sub(r"[^a-z0-9 ]", " ", title).split())
+        text_clean = " ".join(re.sub(r"[^a-z0-9 ]", " ", text).split())
+        tokens = [t for t in name.split() if len(t) > 1]
+        if not name:
+            return -1
+        # A full college-name phrase in the title is strongest. Otherwise require
+        # every meaningful name token in the title, or a very close title match.
+        if name in title_clean:
+            score += 100
+        elif tokens and all(token in title_clean for token in tokens):
+            score += 85
+        elif tokens and sum(token in title_clean for token in tokens) >= max(2, int(len(tokens) * 0.8)):
+            score += 65
+        elif name in text_clean:
+            score += 45
+        else:
+            return -1
+
+    if _is_official_result(item.get("url", "")):
+        score += 20
+    if course_name.strip() and course_name.lower() in text:
+        score += 5
+    for value in (city_name, state_name):
+        if value.strip() and value.lower() in text:
+            score += 3
+
+    # Reject generic pages that mention a college name only in passing.
+    college_terms = ("college", "university", "institute", "institution", "admission", "prospectus")
+    if not any(term in text for term in college_terms):
+        return -1
+    return score
+
 @st.cache_data(ttl=600, show_spinner=False)
-def search_college_web(query, official_query):
-    """Fetch fresh web search results; cache briefly to reduce repeated requests."""
+def _extract_webpage_blocks(url):
+    """Download a public page and extract readable paragraph/list/table text."""
+    from urllib.request import Request, urlopen
+    from html.parser import HTMLParser
+
+    class TextExtractor(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.blocks = []
+            self.current = []
+            self.skip_depth = 0
+
+        def handle_starttag(self, tag, attrs):
+            if tag in ("script", "style", "noscript", "svg", "nav", "footer", "header"):
+                self.skip_depth += 1
+            if tag in ("p", "li", "tr", "h1", "h2", "h3", "h4", "td", "th", "dt", "dd") and not self.skip_depth:
+                if self.current:
+                    self._save()
+
+        def handle_endtag(self, tag):
+            if tag in ("script", "style", "noscript", "svg", "nav", "footer", "header") and self.skip_depth:
+                self.skip_depth -= 1
+            if tag in ("p", "li", "tr", "h1", "h2", "h3", "h4", "td", "th", "dt", "dd") and not self.skip_depth:
+                self._save()
+
+        def handle_data(self, data):
+            if not self.skip_depth and data.strip():
+                self.current.append(data.strip())
+
+        def _save(self):
+            value = " ".join(self.current).strip()
+            if len(value) >= 25:
+                self.blocks.append(value)
+            self.current = []
+
+    try:
+        request = Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; JarvisCollegeFinder/1.0)"})
+        with urlopen(request, timeout=10) as response:
+            content_type = response.headers.get("Content-Type", "").lower()
+            if "html" not in content_type:
+                return []
+            raw = response.read(1_500_000)
+            charset = response.headers.get_content_charset() or "utf-8"
+        parser = TextExtractor()
+        parser.feed(raw.decode(charset, errors="ignore"))
+        parser._save()
+        return parser.blocks
+    except Exception:
+        return []
+
+
+def _topic_terms(info_topic):
+    terms = {
+        "College search / overview": ["about", "established", "affiliated", "campus", "address", "university"],
+        "Admissions 2026-27": ["admission", "application", "last date", "2026", "2027", "registration", "prospectus"],
+        "Eligibility & required subjects": ["eligibility", "qualification", "minimum marks", "subjects", "criteria", "age limit"],
+        "Fees & scholarships": ["fee", "fees", "tuition", "semester", "annual", "hostel fee", "scholarship", "refund"],
+        "Entrance exams & counselling": ["entrance", "exam", "counselling", "counseling", "merit", "cut off", "cutoff", "jee", "neet", "cuet"],
+        "Placements & courses": ["placement", "median salary", "average package", "highest package", "programme", "course", "department"],
+        "Hostel & campus facilities": ["hostel", "accommodation", "mess", "library", "laboratory", "sports", "campus facility"],
+        "Recognition / approval": ["recognition", "approved", "approval", "accreditation", "ugc", "aicte", "naac", "affiliation"],
+        "Ranking (NIRF)": ["nirf", "ranking", "rank", "score", "category"],
+        "Contact & official website": ["contact", "address", "phone", "email", "telephone", "reach us"],
+    }
+    return terms.get(info_topic, ["college", "university"])
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def search_college_web(query, official_query, college_name="", course_name="", city_name="", state_name="", info_topic="College search / overview"):
+    """Find the requested institution, fetch pages, and extract topic-specific information."""
     from ddgs import DDGS
 
     searcher = DDGS(timeout=15)
     collected = []
     seen = set()
-
     for search_query in (official_query, query):
         if not search_query:
             continue
         try:
-            results = searcher.text(
-                search_query,
-                region="in-en",
-                safesearch="moderate",
-                max_results=8,
-                backend="auto",
-            )
+            results = searcher.text(search_query, region="in-en", safesearch="moderate", max_results=8, backend="auto")
             for item in results or []:
                 url = (item.get("href") or item.get("url") or "").strip()
                 title = (item.get("title") or "").strip()
                 body = (item.get("body") or item.get("description") or "").strip()
                 if not url or not title or url in seen:
                     continue
-                seen.add(url)
-                collected.append({
-                    "title": title,
-                    "url": url,
-                    "body": body,
-                    "official": _is_official_result(url),
-                })
+                result = {"title": title, "url": url, "body": body, "official": _is_official_result(url)}
+                score = _college_relevance(result, college_name, course_name, city_name, state_name)
+                if score >= 45:
+                    result["relevance"] = score
+                    collected.append(result)
+                    seen.add(url)
         except Exception:
-            # One search backend can fail while the other still returns results.
             continue
 
-    collected.sort(key=lambda result: (not result["official"],))
-    return collected
+    collected.sort(key=lambda result: (result["relevance"], result["official"]), reverse=True)
+    terms = _topic_terms(info_topic)
+    output = []
+    for item in collected[:5]:
+        blocks = _extract_webpage_blocks(item["url"])
+        # Keep only text that answers the selected topic, not the entire webpage.
+        matching = []
+        for block in blocks:
+            lower = block.lower()
+            if any(term in lower for term in terms):
+                if len(block) > 900:
+                    block = block[:900] + "…"
+                matching.append(block)
+        # For fee/placement/eligibility requests, prioritize passages with actual amounts or figures.
+        if info_topic == "Fees & scholarships":
+            import re as _re
+            matching.sort(key=lambda x: bool(_re.search(r"(?:₹|rs\.?|inr|\b\d[\d,]*(?:\.\d+)?\s*(?:/-|per year|per annum|per semester))", x.lower())), reverse=True)
+        item["information"] = matching[:10]
+        item["page_fetched"] = bool(blocks)
+        output.append(item)
+        if len(output) >= 3:
+            break
+    return output
 
 def render_college_finder():
     st.markdown("## 🏛️ College Finder")
@@ -1033,7 +1149,7 @@ def render_college_finder():
             c1, c2 = st.columns(2)
             with c1:
                 college_name = st.text_input(
-                    "College name (optional)", placeholder="e.g. BHU, Delhi University"
+                    "Exact college / university name", placeholder="e.g. Banaras Hindu University"
                 )
                 course_name = st.text_input(
                     "Course / programme", placeholder="e.g. BCA, B.Tech, MBBS"
@@ -1064,47 +1180,42 @@ def render_college_finder():
             )
 
     if submitted:
-        parts = [p.strip() for p in (
-            college_name, course_name, city_name, state_name
-        ) if p and p.strip()]
+        parts = [p.strip() for p in (college_name, course_name, city_name, state_name)
+                 if p and p.strip()]
         if college_type != "Any type":
             parts.append(college_type + " college")
         topic_map = {
-            "College search / overview": "colleges official website courses",
-            "Admissions 2026-27": "2026-27 admission notification application dates",
-            "Eligibility & required subjects": "eligibility criteria required subjects",
-            "Fees & scholarships": "official fee structure scholarships",
-            "Entrance exams & counselling": "entrance examination counselling 2026",
-            "Placements & courses": "courses placement report",
-            "Hostel & campus facilities": "hostel campus facilities",
-            "Recognition / approval": "UGC AICTE recognition approval status",
-            "Ranking (NIRF)": "NIRF 2025 ranking",
-            "Contact & official website": "official website contact",
+            "College search / overview": "college university official website",
+            "Admissions 2026-27": "college 2026-27 admission official notification",
+            "Eligibility & required subjects": "college course eligibility criteria",
+            "Fees & scholarships": "college official fee structure scholarships",
+            "Entrance exams & counselling": "college entrance examination counselling 2026",
+            "Placements & courses": "college courses placement report",
+            "Hostel & campus facilities": "college hostel campus facilities",
+            "Recognition / approval": "college UGC AICTE recognition approval",
+            "Ranking (NIRF)": "college NIRF 2025 ranking",
+            "Contact & official website": "college official website contact",
         }
-        parts.append(topic_map[info_topic])
-        query = " ".join(parts) + " India"
-
-        official_parts = [p.strip() for p in (
-            college_name, course_name, city_name, state_name
-        ) if p and p.strip()]
-        official_query = (
-            " ".join(official_parts + [topic_map[info_topic]]) +
-            " India (site:ugc.gov.in OR site:aicte-india.org OR "
-            "site:aishe.gov.in OR site:nirfindia.org OR site:ac.in OR site:edu.in)"
-        )
-
+        topic = topic_map[info_topic]
+        if college_name.strip():
+            query = f'"{college_name.strip()}" {course_name} {topic} {city_name} {state_name} India'
+            official_query = f'"{college_name.strip()}" {course_name} {topic} India site:ac.in OR site:edu.in OR site:gov.in'
+        else:
+            st.warning("Exact college profile ke liye pehle college/university ka naam likhein.")
+            st.stop()
         st.session_state["college_finder_last_query"] = query
         st.session_state["college_finder_last_official_query"] = official_query
+        st.session_state["college_finder_last_topic"] = info_topic
         st.session_state["college_finder_results"] = None
 
     if st.session_state.get("college_finder_last_query"):
         query = st.session_state["college_finder_last_query"]
         official_query = st.session_state.get("college_finder_last_official_query", "")
-        st.caption("Search query: " + query)
+        st.caption("Exact institution lookup: " + query)
 
         with st.spinner("Searching the web for current college information..."):
             try:
-                results = search_college_web(query, official_query)
+                results = search_college_web(query, official_query, college_name, course_name, city_name, state_name, st.session_state.get("college_finder_last_topic", "College search / overview"))
                 st.session_state["college_finder_results"] = results
             except Exception as exc:
                 st.session_state["college_finder_results"] = []
@@ -1120,33 +1231,38 @@ def render_college_finder():
         )
 
         if results:
-            official_count = sum(1 for item in results if item["official"])
-            st.success(
-                f"{len(results)} web results found • "
-                f"{official_count} results appear to be from official/education domains"
-            )
-            st.info(
-                "Official-domain label sirf website domain par based hai. "
-                "Har page ki information, date, recognition ya admission status "
-                "independently verify karna zaroori hai."
-            )
-            for index, item in enumerate(results, 1):
-                with st.container(border=True):
-                    label = "Official / education domain" if item["official"] else "Web result — verify source"
-                    st.markdown(f"**{index}. {item['title']}**")
-                    st.caption(label + " • " + _college_domain(item["url"]))
-                    if item["body"]:
-                        st.write(item["body"])
-                    st.markdown(f"[Open source page ↗]({item['url']})")
+            topic_now = st.session_state.get("college_finder_last_topic", "College search / overview")
+            st.markdown("### 🏛️ " + college_name + " — " + topic_now)
+            extracted_count = 0
+            for item in results:
+                facts = item.get("information") or []
+                if facts:
+                    extracted_count += len(facts)
+                    with st.container(border=True):
+                        st.markdown("**" + item["title"] + "**")
+                        for fact in facts:
+                            st.write("• " + fact)
+                        with st.expander("Information source / verify details"):
+                            st.caption(("Official / education domain" if item["official"] else "Other web domain") + " • " + _college_domain(item["url"]))
+                            st.markdown(f"[Open original page ↗]({item['url']})")
+                else:
+                    with st.expander("Page found, but requested detail could not be extracted"):
+                        st.write(item.get("body", "Page text was not accessible to the finder."))
+                        st.markdown(f"[Open original page ↗]({item['url']})")
+            if extracted_count:
+                st.success(f"Selected topic se related {extracted_count} information passages extract kiye gaye.")
+            else:
+                st.warning("College ke matching pages mile, lekin selected topic ki exact information page se extract nahi ho saki. Isliye koi fee/amount ya figure guess karke nahi dikhaya gaya.")
         else:
             st.warning(
-                "Is query ke liye abhi koi result nahi mila. Search terms ko "
-                "short karke ya college/course ka naam badal kar try karein."
+                "Is exact college ke naam se reliable matching pages nahi mile. Naam ki official spelling check karein; unrelated keyword results jaanbujhkar hide kiye gaye hain."
             )
 
     with st.container(border=True):
         st.subheader("🛡️ Important information")
         st.markdown(
+            "- Finder ab broad keyword list ke bajay diye gaye exact college ke matching source pages hi dikhata hai.\n"
+            "- Selected topic (jaise Fees) ke mutabik matching paragraphs official/public pages se extract karke dikhaye jaate hain; source link verification ke liye expand kar sakte hain.\n"
             "- Search results internet se request ke waqt laaye jaate hain; "
             "results search provider ki availability par depend karte hain.\n"
             "- Search result ka snippet poori official notification ka substitute nahi hai.\n"
