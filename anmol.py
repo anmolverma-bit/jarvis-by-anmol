@@ -932,7 +932,7 @@ if st.session_state.sound_enabled:
 st.divider()
 
 # ----------------------------- Student form -----------------------------
-st.markdown("## 👋 Welcome to Your Future")
+st.markdown("## 🎓FOR YOUR BETTER GUIDENCE")
 st.markdown('<p class="subtitle">Tell us about yourself to explore suitable career paths.</p>', unsafe_allow_html=True)
 
 with st.container(border=True):
