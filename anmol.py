@@ -881,7 +881,7 @@ def reset_form():
     st.session_state.selected_category = None
 
 # ----------------------------- Header -----------------------------
-h1, h2, h3 = st.columns([3.2, 1, 1])
+h1, h2 = st.columns([3.2, 1])
 with h1:
     st.markdown('<div class="brand">🧠 Jarvis by Anmol</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtitle">Your Smart Study & Career Companion</div>', unsafe_allow_html=True)
@@ -893,10 +893,6 @@ with h2:
     if chosen_theme != st.session_state.theme:
         st.session_state.theme = chosen_theme
         st.rerun()
-with h3:
-    if "sound_enabled" not in st.session_state:
-        st.session_state.sound_enabled = False
-    st.session_state.sound_enabled = st.toggle("Sound", value=st.session_state.sound_enabled, help="Optional interface sounds")
 
 # Subtle interface sounds. They remain OFF until the visitor enables them.
 if st.session_state.sound_enabled:
